@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "../../../lib/supabaseClient";
@@ -5,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Toast } from "@/components/ui/toast";
 import { toast } from "@/hooks/use-toast";
+
 export default function CreateProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -16,18 +18,18 @@ export default function CreateProfilePage() {
     first_name: "",
     last_name: "",
     bio: "",
+    date_of_birth: "",
+    email: "",
+    phone: "",
+    country: "",
+    city: "",
     instagram_url: "",
-    tiktok_url: "",
-    youtube_url: "",
+    linkedin_url: "",
     portfolio_url: "",
   });
 
-  // 🚀 Force refresh session on page load
   useEffect(() => {
-    const refreshSession = async () => {
-      await supabase.auth.refreshSession();
-    };
-    refreshSession();
+    supabase.auth.refreshSession();
   }, []);
 
   const handleInputChange = (
@@ -49,8 +51,6 @@ export default function CreateProfilePage() {
     e.preventDefault();
     setLoading(true);
 
-    console.log("👉 Starting profile save...");
-
     let avatarUrl = null;
 
     if (avatarFile) {
@@ -63,7 +63,7 @@ export default function CreateProfilePage() {
         .upload(filePath, avatarFile);
 
       if (uploadError) {
-        console.error("❌ Avatar upload failed:", uploadError.message);
+        console.error("Avatar upload failed:", uploadError.message);
         setLoading(false);
         return;
       }
@@ -73,7 +73,6 @@ export default function CreateProfilePage() {
         .getPublicUrl(filePath);
 
       avatarUrl = publicUrlData.publicUrl;
-      console.log("✅ Avatar uploaded successfully:", avatarUrl);
     }
 
     const {
@@ -81,61 +80,53 @@ export default function CreateProfilePage() {
       error: sessionError,
     } = await supabase.auth.getSession();
 
-    console.log("🔄 Session data:", session);
-
-    if (sessionError || !session || !session.user) {
-      console.error(
-        "❌ Session error or no user found:",
-        sessionError?.message
-      );
+    if (sessionError || !session?.user) {
+      console.error("Session error:", sessionError?.message);
       setLoading(false);
       return;
     }
 
     const userId = session.user.id;
-    console.log("✅ User ID found:", userId);
 
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        bio: formData.bio,
-        instagram_url: formData.instagram_url,
-        tiktok_url: formData.tiktok_url,
-        youtube_url: formData.youtube_url,
-        portfolio_url: formData.portfolio_url,
-        avatar_url: avatarUrl,
-        full_name: `${formData.first_name} ${formData.last_name}`,
-      })
+      .upsert([
+        {
+          id: userId,
+          ...formData,
+          avatar_url: avatarUrl,
+          full_name: `${formData.first_name} ${formData.last_name}`,
+          role: "creator",
+        },
+      ])
       .eq("id", userId);
 
     if (profileError) {
-      console.error("❌ Profile update failed:", profileError.message);
+      console.error("Profile save failed:", profileError.message);
       setLoading(false);
       return;
     }
 
-    // ✅ Show success toast
     toast({
       title: "Profile Completed 🎉",
       description: "Your profile has been saved successfully.",
     });
 
-    // ✅ Redirect after small delay
     setTimeout(() => {
       router.push("/creator/dashboard");
     }, 1000);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-lg">
+    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-3xl space-y-6 bg-white p-8 rounded-xl shadow-lg"
+      >
         <h1 className="text-2xl font-bold text-center mb-6">
-          Complete your Profile
+          Complete Your Profile
         </h1>
 
-        {/* Avatar Upload */}
         <div className="flex flex-col items-center">
           {previewUrl && (
             <img
@@ -147,82 +138,106 @@ export default function CreateProfilePage() {
           <Input type="file" accept="image/*" onChange={handleAvatarChange} />
         </div>
 
-        {/* First Name */}
-        <div>
-          <Label htmlFor="first_name">First Name</Label>
-          <Input
-            id="first_name"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleInputChange}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="first_name">First Name</Label>
+            <Input
+              name="first_name"
+              value={formData.first_name}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="last_name">Last Name</Label>
+            <Input
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="date_of_birth">Date of Birth</Label>
+            <Input
+              type="date"
+              name="date_of_birth"
+              value={formData.date_of_birth}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="phone">Phone Number</Label>
+            <Input
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="country">Country</Label>
+            <Input
+              name="country"
+              value={formData.country}
+              onChange={handleInputChange}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input
+              name="city"
+              value={formData.city}
+              onChange={handleInputChange}
+            />
+          </div>
         </div>
 
-        {/* Last Name */}
-        <div>
-          <Label htmlFor="last_name">Last Name</Label>
-          <Input
-            id="last_name"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        {/* Bio */}
         <div>
           <Label htmlFor="bio">Bio</Label>
           <Textarea
-            id="bio"
             name="bio"
             value={formData.bio}
             onChange={handleInputChange}
           />
         </div>
 
-        {/* Socials */}
-        <div>
-          <Label htmlFor="instagram_url">Instagram</Label>
-          <Input
-            id="instagram_url"
-            name="instagram_url"
-            value={formData.instagram_url}
-            onChange={handleInputChange}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="instagram_url">Instagram</Label>
+            <Input
+              name="instagram_url"
+              value={formData.instagram_url}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="linkedin_url">LinkedIn</Label>
+            <Input
+              name="linkedin_url"
+              value={formData.linkedin_url}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label htmlFor="portfolio_url">Portfolio</Label>
+            <Input
+              name="portfolio_url"
+              value={formData.portfolio_url}
+              onChange={handleInputChange}
+            />
+          </div>
         </div>
 
-        <div>
-          <Label htmlFor="tiktok_url">TikTok</Label>
-          <Input
-            id="tiktok_url"
-            name="tiktok_url"
-            value={formData.tiktok_url}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="youtube_url">YouTube</Label>
-          <Input
-            id="youtube_url"
-            name="youtube_url"
-            value={formData.youtube_url}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        {/* Portfolio */}
-        <div>
-          <Label htmlFor="portfolio_url">Portfolio</Label>
-          <Input
-            id="portfolio_url"
-            name="portfolio_url"
-            value={formData.portfolio_url}
-            onChange={handleInputChange}
-          />
-        </div>
-
-        {/* Submit */}
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? "Saving..." : "Save Profile"}
         </Button>
